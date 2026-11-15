@@ -18,9 +18,10 @@ function premiumEstimate(age) {
   return 140000;
 }
 
-function equityShare(age, risk, spouseWorking) {
+function equityShare(age, risk, spouseWorking, pensionCoversHalf = false) {
   let eq = (100 - age) * (risk === 'medium' ? 1 : 0.6);
   if (spouseWorking) eq += 5; // second income = more capacity to ride out falls
+  if (pensionCoversHalf) eq += 5; // steady pension does the same
   return Math.min(50, Math.max(10, Math.round(eq))) / 100;
 }
 
@@ -28,23 +29,27 @@ function expenseForYear(annual, year, A = ASSUMPTIONS) {
   return annual * Math.pow(1 + A.inflation, year - 1);
 }
 
-function buildPlan({ age, spouseWorking, risk, corpus, monthlyExpense, years = 15 }, A = ASSUMPTIONS) {
+function buildPlan({ age, spouseWorking, risk, corpus, monthlyExpense, monthlyPension = 0, years = 15 }, A = ASSUMPTIONS) {
   if (!(corpus > 0)) throw new Error('Corpus must be a positive amount');
   if (!(age >= 30 && age <= 90)) throw new Error('Age must be between 30 and 90');
   if (!['low', 'medium'].includes(risk)) throw new Error('Risk must be low or medium');
   if (!(years >= 10 && years <= 15)) throw new Error('Years must be 10 to 15');
   if (!(monthlyExpense > 0)) monthlyExpense = Math.round(corpus * 0.04 / 12); // 4% rule default
+  if (!(monthlyPension > 0)) monthlyPension = 0;
   const annual = monthlyExpense * 12;
+  // shortcut: pension assumed flat (no DA/indexation), add a growth rate if users ask for govt pensions.
+  const pensionYear = monthlyPension * 12;
+  const draw = y => Math.max(0, expenseForYear(annual, y, A) - pensionYear); // what the corpus must pay
   const warnings = [];
 
   const emergency = Math.min(monthlyExpense * (spouseWorking ? 6 : 12), corpus * 0.2);
   const medicalBuffer = Math.min(age >= 70 ? 1000000 : age >= 60 ? 500000 : 300000, corpus * 0.1);
   const investable = corpus - emergency - medicalBuffer;
 
-  const eqPct = equityShare(age, risk, spouseWorking);
+  const eqPct = equityShare(age, risk, spouseWorking, monthlyPension * 2 >= monthlyExpense);
   const equity = investable * eqPct;
-  let need1 = 0, need2 = 0;
-  for (let y = 1; y <= A.incomeYears; y++) need1 += expenseForYear(annual, y, A) + premiumEstimate(age) * Math.pow(1 + A.medicalInflation, y - 1);
+  let need1 = 0;
+  for (let y = 1; y <= A.incomeYears; y++) need1 += draw(y) + premiumEstimate(age) * Math.pow(1 + A.medicalInflation, y - 1);
   const income = Math.min(need1, investable - equity);
   const debt = investable - equity - income;
   if (income < need1) warnings.push('Corpus is too small to fund 3 years of expenses safely. Consider lowering expenses or delaying retirement.');
@@ -83,9 +88,9 @@ function buildPlan({ age, spouseWorking, risk, corpus, monthlyExpense, years = 1
     const expense = expenseForYear(annual, y, A);
     const premium = premiumEstimate(age + y - 1) * Math.pow(1 + A.medicalInflation, y - 1);
     const start = balance;
-    balance = Math.max(0, (balance - expense - premium) * (1 + blended));
+    balance = Math.max(0, (balance - draw(y) - premium) * (1 + blended));
     const source = y <= A.incomeYears ? 'Bucket 1' : y <= A.incomeYears + A.debtYears ? 'Bucket 2' : 'Bucket 3';
-    projection.push({ year: y, age: age + y - 1, start, expense, premium, end: balance, source });
+    projection.push({ year: y, age: age + y - 1, start, expense, pension: pensionYear, premium, end: balance, source });
   }
   const depletedYear = (projection.find(p => p.end === 0) || {}).year;
   if (depletedYear) warnings.push(`At these expenses the corpus runs out in year ${depletedYear}. Reduce monthly spend or pick a smaller horizon.`);
@@ -101,7 +106,10 @@ function buildPlan({ age, spouseWorking, risk, corpus, monthlyExpense, years = 1
     ],
   };
 
-  return { inputs: { age, spouseWorking, risk, corpus, monthlyExpense, years }, equityPct: eqPct, buckets, projection, insurance, warnings, blendedReturn: blended };
+  const overtaken = projection.find(p => p.expense > pensionYear);
+  if (monthlyPension >= monthlyExpense && overtaken)
+    warnings.push(`Your pension covers expenses today, but with inflation expenses overtake it in year ${overtaken.year}. The corpus fills the gap after that.`);
+  return { inputs: { age, spouseWorking, risk, corpus, monthlyExpense, monthlyPension, years }, equityPct: eqPct, buckets, projection, insurance, warnings, blendedReturn: blended };
 }
 
 if (typeof module !== 'undefined') module.exports = { buildPlan, equityShare, ASSUMPTIONS };

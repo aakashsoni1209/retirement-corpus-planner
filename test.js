@@ -27,6 +27,12 @@ assert(buildPlan(base).buckets[2].items.some(i => i[0].includes('Senior')));
 const small = buildPlan({ ...base, corpus: 1e6 });
 assert(small.warnings.some(w => w.includes('runs out')));
 
+// Pension reduces what the corpus pays, so more is left at the end; full pension adds equity.
+const withPension = buildPlan({ ...base, monthlyPension: 30000 });
+assert(withPension.projection.at(-1).end > buildPlan(base).projection.at(-1).end);
+assert(withPension.equityPct > buildPlan(base).equityPct);
+assert(buildPlan({ ...base, monthlyPension: 60000 }).warnings.some(w => w.includes('overtake')));
+
 // Bad input rejected.
 assert.throws(() => buildPlan({ ...base, corpus: 0 }));
 assert.throws(() => buildPlan({ ...base, risk: 'high' }));

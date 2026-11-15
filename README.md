@@ -1,8 +1,8 @@
 # Retirement Corpus Planner
 
-A one-page dashboard that splits an Indian retirement corpus (₹) into buckets for the next 10-15 years.
+A one-page dashboard (amounts in the Indian system: ₹1,00,00,000, lakh, crore) that splits an Indian retirement corpus (₹) into buckets for the next 10-15 years.
 
-**Inputs:** age, corpus, monthly expenses, spouse working (yes/no), risk profile (low/medium), horizon (10/12/15 years).
+**Inputs:** age, corpus, monthly expenses, monthly pension / retirement income, spouse working (yes/no), risk profile (low/medium), horizon (10/12/15 years).
 
 **Output:**
 - Emergency fund (6 months if spouse works, else 12) and medical buffer
