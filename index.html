@@ -89,6 +89,12 @@
   .item .track { grid-column:1/-1; height:6px; background:var(--soft); border-radius:99px; overflow:hidden; }
   .item .track div { height:100%; background:var(--c); border-radius:99px; }
   .note { color:var(--muted); font-size:13px; margin-top:10px; }
+  .infl { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  @media (max-width:760px) { .infl { grid-template-columns:1fr; } }
+  .infl > div { background:var(--soft); border-radius:12px; padding:14px; display:grid; gap:4px; }
+  .infl span { font-size:13px; color:var(--muted); } .infl b { font-size:24px; font-weight:800; letter-spacing:-.02em; }
+  .infl em { font-style:normal; font-size:12.5px; color:var(--muted); margin-bottom:6px; }
+  .infl .track { height:6px; background:var(--line); border-radius:99px; overflow:hidden; } .infl .track div { height:100%; border-radius:99px; }
   .two { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
   @media (max-width:760px) { .two { grid-template-columns:1fr; } }
   .tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
@@ -230,6 +236,24 @@ function chart(p) {
     <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>${dots}</svg>`;
 }
 
+function inflationCard(p) {
+  const n = p.inputs.years, i = ASSUMPTIONS.inflation, f = Math.pow(1 + i, n);
+  const cost = 100 * f, worth = 100 / f, exp = p.inputs.monthlyExpense;
+  return `<div class="card">
+    <h2>📈 What inflation does in ${n} years</h2>
+    <p class="sub" style="margin:-6px 0 14px">India's retail (CPI) inflation has averaged about ${(i * 100).toFixed(0)}% a year over the last 15 years. The plan assumes ${(i * 100).toFixed(0)}%.</p>
+    <div class="infl">
+      <div><span>What costs ₹100 today will cost</span><b>${inr(cost)}</b><em>in ${n} years</em>
+        <div class="track"><div style="width:${100 / f}%;background:var(--muted)"></div></div><div class="track"><div style="width:100%;background:var(--bad)"></div></div></div>
+      <div><span>₹100 kept as cash will buy only</span><b>${inr(worth)}</b><em>worth of today's goods</em>
+        <div class="track"><div style="width:100%;background:var(--muted)"></div></div><div class="track"><div style="width:${worth}%;background:var(--warn)"></div></div></div>
+      <div><span>Your ${inr(exp)}/month lifestyle will need</span><b>${inr(exp * f)}</b><em>per month in year ${n}</em>
+        <div class="track"><div style="width:${100 / f}%;background:var(--muted)"></div></div><div class="track"><div style="width:100%;background:var(--accent)"></div></div></div>
+    </div>
+    <div class="note">Grey bar = today, coloured bar = after ${n} years. This is why the plan keeps some money in growth assets and adds inflation to every year's expenses.</div>
+  </div>`;
+}
+
 function render() {
   const d = Object.fromEntries(new FormData(form));
   document.getElementById('ageOut').textContent = d.age + ' yrs';
@@ -271,6 +295,8 @@ function render() {
     </div>
   </div>
   ${alerts}
+
+  ${inflationCard(p)}
 
   <div class="card">
     <h2>Where to put your money</h2>
