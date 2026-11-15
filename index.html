@@ -17,6 +17,7 @@
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px; }
   form { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); align-items:end; }
   label { display:grid; gap:4px; font-size:13px; color:var(--muted); }
+  .words { color:var(--accent); font-size:12px; min-height:18px; }
   input, select { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--text); }
   .stats { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); margin:16px 0; }
   .stat b { display:block; font-size:22px; } .stat span { color:var(--muted); font-size:13px; }
@@ -64,12 +65,23 @@ const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
 const lakh = n => n >= 1e7 ? '₹' + (n / 1e7).toFixed(2) + ' Cr' : '₹' + (n / 1e5).toFixed(1) + ' L';
 const colors = { emergency: 'var(--c1)', medical: 'var(--c2)', income: 'var(--c3)', debt: 'var(--c4)', equity: 'var(--c5)' };
 const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+// 12530450 -> "1 Crore 25 Lakh 30 Thousand 450 Rupees"
+function inWords(n) {
+  if (!n) return '';
+  const parts = [[1e7, 'Crore'], [1e5, 'Lakh'], [1e3, 'Thousand'], [1, 'Rupees']].map(([u, name]) => {
+    const q = u === 1e7 ? Math.floor(n / u) : Math.floor(n / u) % (u === 1 ? 1000 : 100);
+    return q ? `${q.toLocaleString('en-IN')} ${name}` : '';
+  }).filter(Boolean);
+  return parts.join(' ') + (n % 1000 ? '' : ' Rupees');
+}
+document.querySelectorAll('.inr').forEach(el => el.insertAdjacentHTML('afterend', '<small class="words" aria-live="polite"></small>'));
 const form = document.getElementById('f'), out = document.getElementById('out');
 
 function render() {
   const d = Object.fromEntries(new FormData(form));
   const num = s => +String(s).replace(/\D/g, '');
   form.risk.disabled = d.wantsEquity === 'no';
+  form.querySelectorAll('.inr').forEach(el => el.nextElementSibling.textContent = inWords(num(el.value)));
   let p, safe;
   try {
     const inputs = { age: +d.age, corpus: num(d.corpus), monthlyPension: num(d.monthlyPension), spouseWorking: d.spouseWorking === 'yes', risk: d.risk || 'low', wantsEquity: d.wantsEquity === 'yes', years: +d.years };
