@@ -33,6 +33,22 @@ assert(withPension.projection.at(-1).end > buildPlan(base).projection.at(-1).end
 assert(withPension.equityPct > buildPlan(base).equityPct);
 assert(buildPlan({ ...base, monthlyPension: 60000 }).warnings.some(w => w.includes('overtake')));
 
+// Safe spending: lasts the horizon with >=25% left, a bit more does not, and pension raises it.
+const { safeMonthlyExpense } = require('./plan.js');
+const safe = safeMonthlyExpense(base);
+assert(safe > 0);
+assert(buildPlan({ ...base, monthlyExpense: safe }).projection.at(-1).end >= 0.25 * buildPlan({ ...base, monthlyExpense: safe }).investable);
+assert(buildPlan({ ...base, monthlyExpense: safe + 5000 }).projection.at(-1).end < 0.25 * buildPlan({ ...base, monthlyExpense: safe + 5000 }).investable);
+assert(safeMonthlyExpense({ ...base, monthlyPension: 30000 }) > safe + 10000); // < +30000: flat pension loses to inflation
+const auto = buildPlan({ ...base, monthlyExpense: 0 });
+assert(auto.autoExpense && auto.inputs.monthlyExpense === safe);
+
+// No share market: zero equity, no growth bucket, buckets still add up.
+const noEq = buildPlan({ ...base, wantsEquity: false });
+assert.strictEqual(noEq.equityPct, 0);
+assert(!noEq.buckets.some(b => b.key === 'equity'));
+assert(Math.abs(sum(noEq) - 1e7) < 1);
+
 // Bad input rejected.
 assert.throws(() => buildPlan({ ...base, corpus: 0 }));
 assert.throws(() => buildPlan({ ...base, risk: 'high' }));

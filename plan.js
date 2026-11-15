@@ -29,13 +29,24 @@ function expenseForYear(annual, year, A = ASSUMPTIONS) {
   return annual * Math.pow(1 + A.inflation, year - 1);
 }
 
-function buildPlan({ age, spouseWorking, risk, corpus, monthlyExpense, monthlyPension = 0, years = 15 }, A = ASSUMPTIONS) {
+// Highest monthly household spend (pension + corpus) that lasts the horizon and still leaves
+// 25% of the investable corpus, so money remains for life after the plan ends.
+function safeMonthlyExpense(inputs, A = ASSUMPTIONS) {
+  let lo = 1, hi = (inputs.corpus / 12) + (inputs.monthlyPension || 0);
+  const ok = x => { const p = buildPlan({ ...inputs, monthlyExpense: x }, A); return p.projection.at(-1).end >= 0.25 * p.investable; };
+  if (!ok(lo)) return 0;
+  for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; ok(mid) ? lo = mid : hi = mid; }
+  return Math.floor(lo / 500) * 500;
+}
+
+function buildPlan({ age, spouseWorking, risk, corpus, monthlyExpense, monthlyPension = 0, wantsEquity = true, years = 15 }, A = ASSUMPTIONS) {
   if (!(corpus > 0)) throw new Error('Corpus must be a positive amount');
   if (!(age >= 30 && age <= 90)) throw new Error('Age must be between 30 and 90');
   if (!['low', 'medium'].includes(risk)) throw new Error('Risk must be low or medium');
   if (!(years >= 10 && years <= 15)) throw new Error('Years must be 10 to 15');
-  if (!(monthlyExpense > 0)) monthlyExpense = Math.round(corpus * 0.04 / 12); // 4% rule default
   if (!(monthlyPension > 0)) monthlyPension = 0;
+  const safeExpense = monthlyExpense > 0 ? null : safeMonthlyExpense({ age, spouseWorking, risk, corpus, monthlyPension, wantsEquity, years }, A);
+  if (!(monthlyExpense > 0)) monthlyExpense = Math.max(safeExpense, 1000);
   const annual = monthlyExpense * 12;
   // shortcut: pension assumed flat (no DA/indexation), add a growth rate if users ask for govt pensions.
   const pensionYear = monthlyPension * 12;
@@ -46,7 +57,8 @@ function buildPlan({ age, spouseWorking, risk, corpus, monthlyExpense, monthlyPe
   const medicalBuffer = Math.min(age >= 70 ? 1000000 : age >= 60 ? 500000 : 300000, corpus * 0.1);
   const investable = corpus - emergency - medicalBuffer;
 
-  const eqPct = equityShare(age, risk, spouseWorking, monthlyPension * 2 >= monthlyExpense);
+  const eqPct = wantsEquity ? equityShare(age, risk, spouseWorking, monthlyPension * 2 >= monthlyExpense) : 0;
+  if (!wantsEquity) warnings.push('No share market exposure: the plan is fully debt and govt schemes. Returns may only just match inflation, so the corpus shrinks faster.');
   const equity = investable * eqPct;
   let need1 = 0;
   for (let y = 1; y <= A.incomeYears; y++) need1 += draw(y) + premiumEstimate(age) * Math.pow(1 + A.medicalInflation, y - 1);
@@ -78,7 +90,7 @@ function buildPlan({ age, spouseWorking, risk, corpus, monthlyExpense, monthlyPe
         ? [['Nifty 50 index fund', equity * 0.5], ['Balanced advantage fund', equity * 0.5]]
         : [['Nifty 50 index fund', equity * 0.5], ['Flexi-cap fund', equity * 0.3], ['Balanced advantage fund', equity * 0.2]],
       note: 'Beats inflation over 8+ years. Move gains to Bucket 2 in good years.' },
-  ];
+  ].filter(b => b.amount > 0);
 
   // Year-by-year projection: money in investable buckets grows at blended rate, expenses + premium withdrawn.
   const blended = buckets.slice(2).reduce((s, b) => s + b.amount * b.rate, 0) / (investable || 1);
@@ -109,7 +121,7 @@ function buildPlan({ age, spouseWorking, risk, corpus, monthlyExpense, monthlyPe
   const overtaken = projection.find(p => p.expense > pensionYear);
   if (monthlyPension >= monthlyExpense && overtaken)
     warnings.push(`Your pension covers expenses today, but with inflation expenses overtake it in year ${overtaken.year}. The corpus fills the gap after that.`);
-  return { inputs: { age, spouseWorking, risk, corpus, monthlyExpense, monthlyPension, years }, equityPct: eqPct, buckets, projection, insurance, warnings, blendedReturn: blended };
+  return { inputs: { age, spouseWorking, risk, corpus, monthlyExpense, monthlyPension, wantsEquity, years }, investable, autoExpense: safeExpense !== null, equityPct: eqPct, buckets, projection, insurance, warnings, blendedReturn: blended };
 }
 
-if (typeof module !== 'undefined') module.exports = { buildPlan, equityShare, ASSUMPTIONS };
+if (typeof module !== 'undefined') module.exports = { buildPlan, equityShare, safeMonthlyExpense, ASSUMPTIONS };

@@ -42,8 +42,10 @@
     <form id="f">
       <label>Your age <input name="age" type="number" min="30" max="90" value="60" required></label>
       <label>Corpus (₹) <input name="corpus" class="inr" inputmode="numeric" value="1,00,00,000" required></label>
-      <label>Monthly household expenses (₹) <input name="monthlyExpense" class="inr" inputmode="numeric" value="50,000"></label>
-      <label>Monthly pension / retirement income (₹) <input name="monthlyPension" class="inr" inputmode="numeric" value="0" placeholder="EPS, govt pension, annuity, rent"></label>
+      <label>How much monthly retirement amount do you get? (₹) <input name="monthlyPension" class="inr" inputmode="numeric" value="0" placeholder="EPS, govt pension, annuity, rent"></label>
+      <label>Monthly household expenses (₹) <input name="monthlyExpense" class="inr" inputmode="numeric" placeholder="Leave blank to use safe amount"></label>
+      <label>Invest in share market?
+        <select name="wantsEquity"><option value="yes">Yes</option><option value="no">No</option></select></label>
       <label>Is spouse working?
         <select name="spouseWorking"><option value="no">No</option><option value="yes">Yes</option></select></label>
       <label>Risk profile
@@ -60,23 +62,29 @@
 <script>
 const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
 const lakh = n => n >= 1e7 ? '₹' + (n / 1e7).toFixed(2) + ' Cr' : '₹' + (n / 1e5).toFixed(1) + ' L';
-const colors = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)'];
+const colors = { emergency: 'var(--c1)', medical: 'var(--c2)', income: 'var(--c3)', debt: 'var(--c4)', equity: 'var(--c5)' };
 const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const form = document.getElementById('f'), out = document.getElementById('out');
 
 function render() {
   const d = Object.fromEntries(new FormData(form));
   const num = s => +String(s).replace(/\D/g, '');
-  let p;
+  form.risk.disabled = d.wantsEquity === 'no';
+  let p, safe;
   try {
-    p = buildPlan({ age: +d.age, corpus: num(d.corpus), monthlyExpense: num(d.monthlyExpense), monthlyPension: num(d.monthlyPension), spouseWorking: d.spouseWorking === 'yes', risk: d.risk, years: +d.years });
+    const inputs = { age: +d.age, corpus: num(d.corpus), monthlyPension: num(d.monthlyPension), spouseWorking: d.spouseWorking === 'yes', risk: d.risk || 'low', wantsEquity: d.wantsEquity === 'yes', years: +d.years };
+    p = buildPlan({ ...inputs, monthlyExpense: num(d.monthlyExpense) });
+    safe = safeMonthlyExpense(inputs);
   } catch (e) { out.innerHTML = `<div class="warn">${esc(e.message)}</div>`; return; }
+  form.monthlyExpense.placeholder = `Blank = safe amount ${inr(safe)}`;
   const last = p.projection[p.projection.length - 1];
   const max = Math.max(...p.projection.map(r => r.start), 1);
   const pts = p.projection.map((r, i) => `${(i / (p.projection.length - 1)) * 100},${100 - (r.end / max) * 95}`).join(' ');
 
   out.innerHTML = `
   <div class="stats">
+    <div class="card stat"><span>Safe monthly spending (pension + corpus)</span><b>${inr(safe)}</b>
+      ${p.autoExpense ? '<span>Used as your expenses</span>' : p.inputs.monthlyExpense > safe ? `<span style="color:var(--warn)">You plan ${inr(p.inputs.monthlyExpense - safe)} more than this</span>` : '<span>Your expenses are within this</span>'}</div>
     <div class="card stat"><span>Equity share</span><b>${Math.round(p.equityPct * 100)}%</b></div>
     <div class="card stat"><span>Expected blended return</span><b>${(p.blendedReturn * 100).toFixed(1)}%</b></div>
     <div class="card stat"><span>Corpus left after ${p.inputs.years} yrs</span><b>${lakh(last.end)}</b></div>
@@ -86,9 +94,9 @@ function render() {
   <div class="grid" style="margin-top:16px">
     <div class="card">
       <h2>Where to put the money</h2>
-      <div class="bar" role="img" aria-label="Allocation bar">${p.buckets.map((b, i) => `<div title="${esc(b.name)}" style="width:${b.amount / p.inputs.corpus * 100}%;background:${colors[i]}"></div>`).join('')}</div>
+      <div class="bar" role="img" aria-label="Allocation bar">${p.buckets.map((b, i) => `<div title="${esc(b.name)}" style="width:${b.amount / p.inputs.corpus * 100}%;background:${colors[b.key]}"></div>`).join('')}</div>
       ${p.buckets.map((b, i) => `<div class="bucket">
-        <header><span><i class="dot" style="background:${colors[i]}"></i>${esc(b.name)}</span><span>${lakh(b.amount)} · ${(b.amount / p.inputs.corpus * 100).toFixed(0)}%</span></header>
+        <header><span><i class="dot" style="background:${colors[b.key]}"></i>${esc(b.name)}</span><span>${lakh(b.amount)} · ${(b.amount / p.inputs.corpus * 100).toFixed(0)}%</span></header>
         <ul>${b.items.map(([n, a]) => `<li>${esc(n)}: ${inr(a)}</li>`).join('')}</ul>
         <div class="note">${esc(b.note)} Expected ~${(b.rate * 100).toFixed(1)}%/yr.</div></div>`).join('')}
     </div>
