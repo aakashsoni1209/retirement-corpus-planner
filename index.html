@@ -4,70 +4,191 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Retirement Corpus Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#5c6577; --line:#e3e6ec; --accent:#2f6fde; --warn:#b4540a; --warnbg:#fff4e5;
-          --c1:#8a94a8; --c2:#c9658f; --c3:#2f6fde; --c4:#3a9d8f; --c5:#e09a2b; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#12151b; --card:#1b1f27; --text:#e7eaf0; --muted:#9aa3b5; --line:#2b313d; --warnbg:#3a2a15; --warn:#f0b56a; } }
-  * { box-sizing: border-box; }
-  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); }
-  main { max-width:1100px; margin:0 auto; padding:24px 16px 48px; }
-  h1 { font-size:24px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 12px; }
-  .sub { color:var(--muted); margin:0 0 20px; }
-  .grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px; }
-  form { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); align-items:end; }
-  label { display:grid; gap:4px; font-size:13px; color:var(--muted); }
-  .words { color:var(--accent); font-size:12px; min-height:18px; }
+  :root {
+    --bg:#f4f6fb; --card:#ffffff; --soft:#f0f3fa; --text:#141a2e; --muted:#5d6681; --line:#e2e7f1;
+    --accent:#4f46e5; --accent2:#0ea5e9; --accent-soft:#eef0ff;
+    --ok:#0f8a5f; --ok-bg:#e6f7ef; --warn:#b45309; --warn-bg:#fff5e6; --bad:#c0262d; --bad-bg:#fdecec;
+    --c-emergency:#64748b; --c-medical:#e0527e; --c-income:#4f46e5; --c-debt:#0d9488; --c-equity:#f59e0b;
+    --shadow:0 1px 2px rgba(20,26,46,.04), 0 8px 24px rgba(20,26,46,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0d1120; --card:#161b2e; --soft:#1d2338; --text:#e8ebf5; --muted:#9aa3bd; --line:#2a3150;
+      --accent:#818cf8; --accent2:#38bdf8; --accent-soft:#252b4d;
+      --ok:#4ade80; --ok-bg:#12321f; --warn:#fbbf24; --warn-bg:#36290f; --bad:#f87171; --bad-bg:#3a1618;
+      --c-emergency:#94a3b8; --c-medical:#f472b6; --c-income:#818cf8; --c-debt:#2dd4bf; --c-equity:#fbbf24;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25); }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.55 Inter, system-ui, sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; }
+  .hero { background:linear-gradient(120deg,#312e81,#4f46e5 45%,#0ea5e9); color:#fff; padding:36px 16px 84px; }
+  .hero-in { max-width:1180px; margin:0 auto; }
+  .hero h1 { margin:0; font-size:clamp(24px,4vw,34px); font-weight:800; letter-spacing:-.02em; }
+  .hero p { margin:6px 0 14px; opacity:.88; max-width:640px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.25); padding:4px 12px; border-radius:99px; font-size:13px; }
+  .wrap { max-width:1180px; margin:-60px auto 0; padding:0 16px 48px; display:grid; gap:20px; grid-template-columns:minmax(300px,380px) 1fr; align-items:start; }
+  @media (max-width:900px) { .wrap { grid-template-columns:minmax(0,1fr); } }
+  .wrap > * { min-width:0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; box-shadow:var(--shadow); }
+  aside.card { position:sticky; top:16px; }
+  @media (max-width:900px) { aside.card { position:static; } }
+  .step { display:flex; align-items:center; gap:10px; font-weight:700; margin:18px 0 12px; font-size:14px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .step:first-child { margin-top:0; }
+  .step i { font-style:normal; display:grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; }
+  .field { margin-bottom:14px; }
+  .field > label, .field > .lbl { display:flex; justify-content:space-between; font-weight:600; font-size:14px; margin-bottom:6px; }
+  .field .lbl b { color:var(--accent); }
+  input[type=text] { width:100%; font:inherit; font-size:16px; font-weight:600; padding:11px 12px 11px 30px; border:1.5px solid var(--line); border-radius:10px; background:var(--soft); color:var(--text); }
+  .money { position:relative; } .money::before { content:'₹'; position:absolute; left:12px; top:11px; color:var(--muted); font-weight:600; }
+  input[type=text]:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); background:var(--card); }
+  .words { display:block; color:var(--accent); font-size:12.5px; font-weight:500; min-height:19px; margin-top:4px; }
+  input[type=range] { width:100%; accent-color:var(--accent); }
+  .seg { display:flex; background:var(--soft); border:1px solid var(--line); border-radius:10px; padding:3px; gap:3px; }
+  .seg input { position:absolute; opacity:0; pointer-events:none; }
+  .seg label { flex:1; text-align:center; padding:8px 6px; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px; color:var(--muted); transition:.15s; }
+  .seg input:checked + label { background:var(--card); color:var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.12); }
+  .seg input:focus-visible + label { outline:2px solid var(--accent); }
+  fieldset { border:0; padding:0; margin:0; } fieldset:disabled { opacity:.45; }
+  .quick { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .quick button, .link { font:inherit; font-size:12.5px; font-weight:600; border:1px solid var(--line); background:var(--card); color:var(--text); padding:4px 10px; border-radius:99px; cursor:pointer; }
+  .quick button:hover, .link:hover { border-color:var(--accent); color:var(--accent); }
+  .hint { color:var(--muted); font-size:12.5px; margin-top:4px; }
   [hidden] { display:none !important; }
-  input, select { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--text); }
-  .stats { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); margin:16px 0; }
-  .stat b { display:block; font-size:22px; } .stat span { color:var(--muted); font-size:13px; }
-  .bar { display:flex; height:22px; border-radius:6px; overflow:hidden; margin-bottom:14px; }
-  .bucket { border-top:1px solid var(--line); padding:10px 0; }
-  .bucket header { display:flex; justify-content:space-between; gap:8px; font-weight:600; }
-  .dot { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; }
-  .bucket ul { margin:4px 0; padding-left:20px; } .note { color:var(--muted); font-size:13px; }
-  table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }
-  th, td { text-align:right; padding:6px 8px; border-bottom:1px solid var(--line); } th:first-child, td:first-child { text-align:left; }
-  .scroll { overflow-x:auto; }
-  .warn { background:var(--warnbg); color:var(--warn); border-radius:8px; padding:10px 14px; margin-top:12px; }
-  svg { width:100%; height:180px; }
-  footer { color:var(--muted); font-size:12px; margin-top:24px; }
+
+  .results { display:grid; gap:20px; min-width:0; }
+  .headline { display:grid; gap:16px; grid-template-columns:1.4fr 1fr; align-items:center; }
+  @media (max-width:640px) { .headline { grid-template-columns:1fr; } }
+  .headline .big { font-size:clamp(30px,5vw,44px); font-weight:800; letter-spacing:-.03em; line-height:1.1; }
+  .headline .sub { color:var(--muted); }
+  .badge { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:99px; font-weight:700; font-size:13px; margin-bottom:10px; }
+  .badge.ok { background:var(--ok-bg); color:var(--ok); } .badge.warn { background:var(--warn-bg); color:var(--warn); } .badge.bad { background:var(--bad-bg); color:var(--bad); }
+  .kpis { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .kpi { background:var(--soft); border-radius:12px; padding:12px; }
+  .kpi span { display:block; font-size:12px; color:var(--muted); font-weight:500; } .kpi b { font-size:19px; font-weight:700; }
+  .alert { display:flex; gap:10px; padding:12px 14px; border-radius:12px; font-size:14px; }
+  .alert.warn { background:var(--warn-bg); color:var(--warn); } .alert.bad { background:var(--bad-bg); color:var(--bad); }
+  h2 { font-size:18px; margin:0 0 14px; letter-spacing:-.01em; }
+  .alloc { display:grid; grid-template-columns:200px 1fr; gap:24px; align-items:center; }
+  @media (max-width:640px) { .alloc { grid-template-columns:1fr; justify-items:center; } }
+  .donut { width:200px; height:200px; }
+  .donut circle { transition:stroke-dasharray .4s, stroke-dashoffset .4s; }
+  .legend { width:100%; display:grid; gap:8px; }
+  .legend div { display:grid; grid-template-columns:12px 1fr auto auto; gap:10px; align-items:center; font-size:14px; }
+  .legend i { width:12px; height:12px; border-radius:4px; }
+  .legend em { font-style:normal; color:var(--muted); font-size:13px; min-width:38px; text-align:right; }
+  .buckets { display:grid; gap:10px; margin-top:20px; }
+  details.bucket { border:1px solid var(--line); border-left:4px solid var(--c); border-radius:12px; padding:12px 14px; background:var(--card); }
+  details.bucket summary { cursor:pointer; display:flex; justify-content:space-between; gap:10px; font-weight:700; list-style:none; }
+  details.bucket summary::-webkit-details-marker { display:none; }
+  details.bucket summary::after { content:'▾'; color:var(--muted); transition:.2s; } details.bucket[open] summary::after { transform:rotate(180deg); }
+  details.bucket summary span:first-child { flex:1; }
+  .item { display:grid; grid-template-columns:1fr auto; gap:4px 12px; font-size:14px; margin-top:10px; }
+  .item .track { grid-column:1/-1; height:6px; background:var(--soft); border-radius:99px; overflow:hidden; }
+  .item .track div { height:100%; background:var(--c); border-radius:99px; }
+  .note { color:var(--muted); font-size:13px; margin-top:10px; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:760px) { .two { grid-template-columns:1fr; } }
+  .tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+  .tiles div { background:var(--soft); border-radius:12px; padding:10px; text-align:center; }
+  .tiles span { display:block; font-size:11.5px; color:var(--muted); } .tiles b { font-size:16px; }
+  ul.ticks { list-style:none; padding:0; margin:0; display:grid; gap:8px; font-size:14px; }
+  ul.ticks li { display:grid; grid-template-columns:20px 1fr; gap:6px; } ul.ticks li::before { content:'✓'; color:var(--ok); font-weight:800; }
+  .chart { width:100%; height:auto; display:block; }
+  .chart text { fill:var(--muted); font-size:11px; font-family:inherit; }
+  .chart .grid line { stroke:var(--line); }
+  .chart circle { fill:var(--card); stroke:var(--accent); stroke-width:2; }
+  .chart circle:hover { fill:var(--accent); }
+  details.table summary { cursor:pointer; color:var(--accent); font-weight:600; margin-top:12px; }
+  .scroll { overflow-x:auto; margin-top:10px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  th, td { text-align:right; padding:8px 10px; border-bottom:1px solid var(--line); } th { color:var(--muted); font-weight:600; font-size:12px; }
+  th:first-child, td:first-child { text-align:left; }
+  td.zero { color:var(--bad); font-weight:700; }
+  .actions { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  .btn { font:inherit; font-weight:700; background:var(--accent); color:#fff; border:0; padding:10px 16px; border-radius:10px; cursor:pointer; }
+  .btn:hover { filter:brightness(1.08); }
+  footer { color:var(--muted); font-size:12px; text-align:center; padding:0 16px 32px; max-width:800px; margin:0 auto; }
+  @media print {
+    body { background:#fff; } .hero { padding:16px; color:#000; background:none; } .chips, aside, .btn, .quick { display:none !important; }
+    .wrap { display:block; margin:0; } .card { box-shadow:none; break-inside:avoid; margin-bottom:12px; } details { display:block; } details > * { display:block !important; }
+  }
 </style>
 </head>
 <body>
-<main>
-  <h1>Retirement Corpus Planner</h1>
-  <p class="sub">Enter your details to split your retirement money into safe, income and growth buckets for the next 10-15 years.</p>
-
-  <div class="card">
-    <form id="f">
-      <label>Your age <input name="age" type="number" min="30" max="90" value="60" required></label>
-      <label>Corpus (₹) <input name="corpus" class="inr" inputmode="numeric" value="1,00,00,000" required></label>
-      <label>Do you get a monthly pension / retirement income?
-        <select name="gotPension"><option value="no">No</option><option value="yes">Yes</option></select></label>
-      <label id="pensionBox" hidden>Monthly pension amount (₹) <input name="monthlyPension" class="inr" inputmode="numeric" placeholder="EPS, govt pension, annuity, rent"></label>
-      <label>Monthly household expenses (₹) <input name="monthlyExpense" class="inr" inputmode="numeric" placeholder="Leave blank to use safe amount"></label>
-      <label>Invest in share market?
-        <select name="wantsEquity"><option value="yes">Yes</option><option value="no">No</option></select></label>
-      <label>Is spouse working?
-        <select name="spouseWorking"><option value="no">No</option><option value="yes">Yes</option></select></label>
-      <label>Risk profile
-        <select name="risk"><option value="low">Low (recommended)</option><option value="medium">Medium</option></select></label>
-      <label>Plan for
-        <select name="years"><option>10</option><option>12</option><option selected>15</option></select> </label>
-    </form>
+<header class="hero">
+  <div class="hero-in">
+    <h1>Retirement Corpus Planner</h1>
+    <p>Tell us a little about yourself. We'll split your retirement money into safe, income and growth buckets for the next 10-15 years, and show how long it lasts.</p>
+    <div class="chips"><span class="chip">🇮🇳 Built for India</span><span class="chip">🔒 Nothing leaves your browser</span><span class="chip">⚡ Updates as you type</span></div>
   </div>
+</header>
 
-  <div id="out"></div>
-  <footer>Educational tool, not financial advice. Rates and scheme limits are assumptions (see plan.js); check current rates and consult a SEBI-registered adviser before investing.</footer>
-</main>
+<div class="wrap">
+  <aside class="card">
+    <form id="f" autocomplete="off">
+      <div class="step"><i>1</i>About you</div>
+      <div class="field">
+        <div class="lbl"><span>Your age</span><b id="ageOut">60 yrs</b></div>
+        <input type="range" name="age" min="40" max="85" value="60" aria-label="Your age">
+      </div>
+      <div class="field">
+        <div class="lbl">Is your spouse working?</div>
+        <div class="seg"><input type="radio" name="spouseWorking" id="sw-n" value="no" checked><label for="sw-n">No</label><input type="radio" name="spouseWorking" id="sw-y" value="yes"><label for="sw-y">Yes</label></div>
+      </div>
+
+      <div class="step"><i>2</i>Your money</div>
+      <div class="field">
+        <label for="corpus">Retirement corpus</label>
+        <div class="money"><input type="text" id="corpus" name="corpus" class="inr" inputmode="numeric" value="1,00,00,000"></div>
+        <small class="words"></small>
+        <div class="quick" data-for="corpus"><button type="button" data-v="5000000">50 L</button><button type="button" data-v="10000000">1 Cr</button><button type="button" data-v="20000000">2 Cr</button><button type="button" data-v="50000000">5 Cr</button></div>
+      </div>
+      <div class="field">
+        <div class="lbl">Do you get a monthly pension?</div>
+        <div class="seg"><input type="radio" name="gotPension" id="gp-n" value="no" checked><label for="gp-n">No</label><input type="radio" name="gotPension" id="gp-y" value="yes"><label for="gp-y">Yes</label></div>
+      </div>
+      <div class="field" id="pensionBox" hidden>
+        <label for="monthlyPension">Monthly pension amount</label>
+        <div class="money"><input type="text" id="monthlyPension" name="monthlyPension" class="inr" inputmode="numeric" placeholder="EPS, govt pension, annuity, rent"></div>
+        <small class="words"></small>
+      </div>
+      <div class="field">
+        <label for="monthlyExpense">Monthly household expenses</label>
+        <div class="money"><input type="text" id="monthlyExpense" name="monthlyExpense" class="inr" inputmode="numeric"></div>
+        <small class="words"></small>
+        <div class="hint">Leave blank and we'll use the safe amount. <button type="button" class="link" id="useSafe">Use safe amount</button></div>
+      </div>
+
+      <div class="step"><i>3</i>Your style</div>
+      <div class="field">
+        <div class="lbl">Invest in the share market?</div>
+        <div class="seg"><input type="radio" name="wantsEquity" id="we-y" value="yes" checked><label for="we-y">Yes</label><input type="radio" name="wantsEquity" id="we-n" value="no"><label for="we-n">No</label></div>
+      </div>
+      <fieldset class="field" id="riskSet">
+        <div class="lbl">Risk profile</div>
+        <div class="seg"><input type="radio" name="risk" id="r-l" value="low" checked><label for="r-l">Low · recommended</label><input type="radio" name="risk" id="r-m" value="medium"><label for="r-m">Medium</label></div>
+      </fieldset>
+      <div class="field">
+        <div class="lbl">Plan for</div>
+        <div class="seg"><input type="radio" name="years" id="y10" value="10"><label for="y10">10 yrs</label><input type="radio" name="years" id="y12" value="12"><label for="y12">12 yrs</label><input type="radio" name="years" id="y15" value="15" checked><label for="y15">15 yrs</label></div>
+      </div>
+    </form>
+  </aside>
+
+  <section class="results" id="out" aria-live="polite"></section>
+</div>
+<footer>Educational tool, not financial advice. Rates and scheme limits are assumptions (see plan.js). Check current rates and consult a SEBI-registered adviser before investing.</footer>
+
 <script src="plan.js"></script>
 <script>
 const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
 const lakh = n => n >= 1e7 ? '₹' + (n / 1e7).toFixed(2) + ' Cr' : '₹' + (n / 1e5).toFixed(1) + ' L';
-const colors = { emergency: 'var(--c1)', medical: 'var(--c2)', income: 'var(--c3)', debt: 'var(--c4)', equity: 'var(--c5)' };
-const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const col = k => `var(--c-${k})`;
+const num = s => +String(s || '').replace(/\D/g, '');
 // 12530450 -> "1 Crore 25 Lakh 30 Thousand 450 Rupees"
 function inWords(n) {
   if (!n) return '';
@@ -77,68 +198,129 @@ function inWords(n) {
   }).filter(Boolean);
   return parts.join(' ') + (n % 1000 ? '' : ' Rupees');
 }
-document.querySelectorAll('.inr').forEach(el => el.insertAdjacentHTML('afterend', '<small class="words" aria-live="polite"></small>'));
 const form = document.getElementById('f'), out = document.getElementById('out');
+let lastSafe = 0;
+
+function donut(buckets, total) {
+  const r = 80, C = 2 * Math.PI * r;
+  let off = 0;
+  const arcs = buckets.map(b => {
+    const len = b.amount / total * C;
+    const s = `<circle r="${r}" cx="100" cy="100" fill="none" stroke="${col(b.key)}" stroke-width="28" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}"><title>${esc(b.name)}: ${lakh(b.amount)}</title></circle>`;
+    off += len; return s;
+  }).join('');
+  return `<svg class="donut" viewBox="0 0 200 200" role="img" aria-label="Allocation chart"><g transform="rotate(-90 100 100)">${arcs}</g>
+    <text x="100" y="94" text-anchor="middle" style="fill:var(--muted);font-size:12px">Total corpus</text>
+    <text x="100" y="116" text-anchor="middle" style="fill:var(--text);font-size:20px;font-weight:800">${lakh(total)}</text></svg>`;
+}
+
+function chart(p) {
+  const W = 640, H = 240, L = 58, R = 12, T = 12, B = 28;
+  const pts = [{ age: p.inputs.age, end: p.investable, year: 0 }, ...p.projection.map(r => ({ age: r.age + 1, end: r.end, year: r.year }))];
+  const max = Math.max(...pts.map(q => q.end), 1) * 1.1;
+  const x = i => L + i / (pts.length - 1) * (W - L - R), y = v => T + (1 - v / max) * (H - T - B);
+  const line = pts.map((q, i) => `${x(i).toFixed(1)},${y(q.end).toFixed(1)}`).join(' ');
+  const grid = [0, .25, .5, .75, 1].map(f => `<line x1="${L}" x2="${W - R}" y1="${y(max * f)}" y2="${y(max * f)}"/><text x="${L - 8}" y="${y(max * f) + 4}" text-anchor="end">${lakh(max * f)}</text>`).join('');
+  const xs = pts.map((q, i) => i % 3 === 0 || i === pts.length - 1 ? `<text x="${x(i)}" y="${H - 8}" text-anchor="${i === pts.length - 1 ? 'end' : i === 0 ? 'start' : 'middle'}">Age ${q.age}</text>` : '').join('');
+  const dots = pts.map((q, i) => `<circle cx="${x(i)}" cy="${y(q.end)}" r="3.5"><title>Year ${q.year} · age ${q.age}: ${lakh(q.end)}</title></circle>`).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Corpus balance by year">
+    <defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".35"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+    <g class="grid">${grid}</g>${xs}
+    <polygon points="${L},${y(0)} ${line} ${W - R},${y(0)}" fill="url(#ga)"/>
+    <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>${dots}</svg>`;
+}
 
 function render() {
   const d = Object.fromEntries(new FormData(form));
-  const num = s => +String(s).replace(/\D/g, '');
-  form.risk.disabled = d.wantsEquity === 'no';
+  document.getElementById('ageOut').textContent = d.age + ' yrs';
+  document.getElementById('riskSet').disabled = d.wantsEquity === 'no';
   document.getElementById('pensionBox').hidden = d.gotPension !== 'yes';
   if (d.gotPension !== 'yes') d.monthlyPension = 0;
-  form.querySelectorAll('.inr').forEach(el => el.nextElementSibling.textContent = inWords(num(el.value)));
+  form.querySelectorAll('.inr').forEach(el => el.closest('.field').querySelector('.words').textContent = inWords(num(el.value)));
+
   let p, safe;
   try {
     const inputs = { age: +d.age, corpus: num(d.corpus), monthlyPension: num(d.monthlyPension), spouseWorking: d.spouseWorking === 'yes', risk: d.risk || 'low', wantsEquity: d.wantsEquity === 'yes', years: +d.years };
     p = buildPlan({ ...inputs, monthlyExpense: num(d.monthlyExpense) });
-    safe = safeMonthlyExpense(inputs);
-  } catch (e) { out.innerHTML = `<div class="warn">${esc(e.message)}</div>`; return; }
-  form.monthlyExpense.placeholder = `Blank = safe amount ${inr(safe)}`;
-  const last = p.projection[p.projection.length - 1];
-  const max = Math.max(...p.projection.map(r => r.start), 1);
-  const pts = p.projection.map((r, i) => `${(i / (p.projection.length - 1)) * 100},${100 - (r.end / max) * 95}`).join(' ');
+    safe = lastSafe = safeMonthlyExpense(inputs);
+  } catch (e) { out.innerHTML = `<div class="card"><div class="alert bad">⚠️ ${esc(e.message)}</div></div>`; return; }
+  form.monthlyExpense.placeholder = `Safe amount: ${inr(safe)}`;
+
+  const last = p.projection.at(-1);
+  const runsOut = p.projection.find(r => r.end === 0);
+  const over = !p.autoExpense && p.inputs.monthlyExpense > safe;
+  const status = runsOut ? ['bad', `⛔ Money runs out in year ${runsOut.year} (age ${runsOut.age})`]
+    : over ? ['warn', `⚠️ ${inr(p.inputs.monthlyExpense - safe)}/month above the safe level`]
+    : ['ok', `✅ On track for ${p.inputs.years} years`];
+  const draw = Math.max(0, p.inputs.monthlyExpense - p.inputs.monthlyPension);
+  const alerts = p.warnings.filter(w => !w.includes('runs out')).map(w => `<div class="alert ${/too small/.test(w) ? 'bad' : 'warn'}">💡 <span>${esc(w)}</span></div>`).join('');
 
   out.innerHTML = `
-  <div class="stats">
-    <div class="card stat"><span>Safe monthly spending (pension + corpus)</span><b>${inr(safe)}</b>
-      ${p.autoExpense ? '<span>Used as your expenses</span>' : p.inputs.monthlyExpense > safe ? `<span style="color:var(--warn)">You plan ${inr(p.inputs.monthlyExpense - safe)} more than this</span>` : '<span>Your expenses are within this</span>'}</div>
-    <div class="card stat"><span>Equity share</span><b>${Math.round(p.equityPct * 100)}%</b></div>
-    <div class="card stat"><span>Expected blended return</span><b>${(p.blendedReturn * 100).toFixed(1)}%</b></div>
-    <div class="card stat"><span>Corpus left after ${p.inputs.years} yrs</span><b>${lakh(last.end)}</b></div>
-    <div class="card stat"><span>Monthly draw from corpus (year 1)</span><b>${inr(Math.max(0, p.inputs.monthlyExpense - p.inputs.monthlyPension))}</b></div>
+  <div class="card headline">
+    <div>
+      <span class="badge ${status[0]}">${status[1]}</span>
+      <div class="sub">You can safely spend</div>
+      <div class="big">${inr(safe)}<span style="font-size:.45em;color:var(--muted);font-weight:600"> /month</span></div>
+      <div class="sub">${p.inputs.monthlyPension ? `${inr(p.inputs.monthlyPension)} pension + ${inr(Math.max(0, safe - p.inputs.monthlyPension))} from corpus. ` : ''}${p.autoExpense ? 'Used as your expenses below.' : `You plan to spend ${inr(p.inputs.monthlyExpense)}.`}</div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><span>Monthly draw from corpus</span><b>${inr(draw)}</b></div>
+      <div class="kpi"><span>Left after ${p.inputs.years} yrs</span><b>${lakh(last.end)}</b></div>
+      <div class="kpi"><span>In share market</span><b>${Math.round(p.equityPct * 100)}%</b></div>
+      <div class="kpi"><span>Expected return</span><b>${(p.blendedReturn * 100).toFixed(1)}%/yr</b></div>
+    </div>
   </div>
-  ${p.warnings.map(w => `<div class="warn">${esc(w)}</div>`).join('')}
-  <div class="grid" style="margin-top:16px">
+  ${alerts}
+
+  <div class="card">
+    <h2>Where to put your money</h2>
+    <div class="alloc">
+      ${donut(p.buckets, p.inputs.corpus)}
+      <div class="legend">${p.buckets.map(b => `<div><i style="background:${col(b.key)}"></i><span>${esc(b.name)}</span><b>${lakh(b.amount)}</b><em>${(b.amount / p.inputs.corpus * 100).toFixed(0)}%</em></div>`).join('')}</div>
+    </div>
+    <div class="buckets">${p.buckets.map((b, i) => `
+      <details class="bucket" style="--c:${col(b.key)}" ${i >= 2 ? 'open' : ''}>
+        <summary><span>${esc(b.name)}</span><span>${lakh(b.amount)}</span></summary>
+        ${b.items.map(([n, a]) => `<div class="item"><span>${esc(n)}</span><b>${inr(a)}</b><div class="track"><div style="width:${a / b.amount * 100}%"></div></div></div>`).join('')}
+        <div class="note">${esc(b.note)} Expected ~${(b.rate * 100).toFixed(1)}% a year.</div>
+      </details>`).join('')}</div>
+  </div>
+
+  <div class="card">
+    <h2>How your corpus moves over ${p.inputs.years} years</h2>
+    ${chart(p)}
+    <details class="table"><summary>See year-by-year table</summary>
+      <div class="scroll"><table>
+        <tr><th>Year</th><th>Age</th><th>Start</th><th>Expenses</th><th>Pension</th><th>Health premium</th><th>End</th><th>Draw from</th></tr>
+        ${p.projection.map(r => `<tr><td>${r.year}</td><td>${r.age}</td><td>${lakh(r.start)}</td><td>${inr(r.expense)}</td><td>${inr(r.pension)}</td><td>${inr(r.premium)}</td><td class="${r.end ? '' : 'zero'}">${lakh(r.end)}</td><td>${r.source}</td></tr>`).join('')}
+      </table></div>
+    </details>
+  </div>
+
+  <div class="two">
     <div class="card">
-      <h2>Where to put the money</h2>
-      <div class="bar" role="img" aria-label="Allocation bar">${p.buckets.map((b, i) => `<div title="${esc(b.name)}" style="width:${b.amount / p.inputs.corpus * 100}%;background:${colors[b.key]}"></div>`).join('')}</div>
-      ${p.buckets.map((b, i) => `<div class="bucket">
-        <header><span><i class="dot" style="background:${colors[b.key]}"></i>${esc(b.name)}</span><span>${lakh(b.amount)} · ${(b.amount / p.inputs.corpus * 100).toFixed(0)}%</span></header>
-        <ul>${b.items.map(([n, a]) => `<li>${esc(n)}: ${inr(a)}</li>`).join('')}</ul>
-        <div class="note">${esc(b.note)} Expected ~${(b.rate * 100).toFixed(1)}%/yr.</div></div>`).join('')}
+      <h2>🩺 Health insurance</h2>
+      <div class="tiles">
+        <div><span>Family floater</span><b>${lakh(p.insurance.baseCover)}</b></div>
+        <div><span>Super top-up</span><b>${lakh(p.insurance.superTopUp)}</b></div>
+        <div><span>Premium / yr</span><b>${inr(p.insurance.premium)}</b></div>
+      </div>
+      <ul class="ticks">${p.insurance.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
     </div>
     <div class="card">
-      <h2>Health insurance</h2>
-      <p>Base family floater: <b>${lakh(p.insurance.baseCover)}</b><br>Super top-up: <b>${lakh(p.insurance.superTopUp)}</b><br>Estimated premium: <b>${inr(p.insurance.premium)}/yr</b> (rises ~10%/yr)</p>
-      <ul>${p.insurance.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
-      <h2 style="margin-top:20px">Yearly routine</h2>
-      <ul>
+      <h2>🗓️ Your yearly routine</h2>
+      <ul class="ticks">
         <li>Each April, move 1 year of expenses from Bucket 2 into Bucket 1.</li>
-        <li>If equity is up more than 10% over target, book profit into Bucket 2.</li>
-        <li>If equity is down, pause the transfer and draw only from Buckets 1-2.</li>
-        <li>Top up the emergency fund after any use.</li>
+        <li>If shares are up more than 10% over target, book profit into Bucket 2.</li>
+        <li>If shares are down, skip that and draw only from Buckets 1-2.</li>
+        <li>Refill the emergency fund after any use.</li>
       </ul>
     </div>
   </div>
-  <div class="card" style="margin-top:16px">
-    <h2>Investable corpus over ${p.inputs.years} years</h2>
-    <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Corpus balance by year"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>
-    <div class="scroll"><table>
-      <tr><th>Year</th><th>Age</th><th>Start</th><th>Expenses</th><th>Pension</th><th>Health premium</th><th>End</th><th>Draw from</th></tr>
-      ${p.projection.map(r => `<tr><td>${r.year}</td><td>${r.age}</td><td>${lakh(r.start)}</td><td>${inr(r.expense)}</td><td>${inr(r.pension)}</td><td>${inr(r.premium)}</td><td>${lakh(r.end)}</td><td>${r.source}</td></tr>`).join('')}
-    </table></div>
-  </div>`;
+
+  <div class="card actions"><span class="sub">Happy with the plan? Save it as PDF to share with family or your adviser.</span><button class="btn" type="button" onclick="document.querySelectorAll('details').forEach(x => x.open = true); print()">⬇️ Print / Save PDF</button></div>`;
 }
+
 // Re-group digits Indian style (1,00,00,000) as the user types, keeping the caret after the same digit.
 form.addEventListener('input', e => {
   const el = e.target;
@@ -152,6 +334,11 @@ form.addEventListener('input', e => {
   }
   render();
 });
+form.addEventListener('change', render);
+document.querySelectorAll('.quick button').forEach(b => b.addEventListener('click', () => {
+  form.corpus.value = (+b.dataset.v).toLocaleString('en-IN'); render();
+}));
+document.getElementById('useSafe').addEventListener('click', () => { form.monthlyExpense.value = lastSafe.toLocaleString('en-IN'); render(); });
 render();
 </script>
 </body>
