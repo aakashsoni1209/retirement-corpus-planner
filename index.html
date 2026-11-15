@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retirement Corpus Planner</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#5c6577; --line:#e3e6ec; --accent:#2f6fde; --warn:#b4540a; --warnbg:#fff4e5;
+          --c1:#8a94a8; --c2:#c9658f; --c3:#2f6fde; --c4:#3a9d8f; --c5:#e09a2b; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#12151b; --card:#1b1f27; --text:#e7eaf0; --muted:#9aa3b5; --line:#2b313d; --warnbg:#3a2a15; --warn:#f0b56a; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width:1100px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { font-size:24px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 12px; }
+  .sub { color:var(--muted); margin:0 0 20px; }
+  .grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px; }
+  form { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); align-items:end; }
+  label { display:grid; gap:4px; font-size:13px; color:var(--muted); }
+  input, select { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--text); }
+  .stats { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); margin:16px 0; }
+  .stat b { display:block; font-size:22px; } .stat span { color:var(--muted); font-size:13px; }
+  .bar { display:flex; height:22px; border-radius:6px; overflow:hidden; margin-bottom:14px; }
+  .bucket { border-top:1px solid var(--line); padding:10px 0; }
+  .bucket header { display:flex; justify-content:space-between; gap:8px; font-weight:600; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; }
+  .bucket ul { margin:4px 0; padding-left:20px; } .note { color:var(--muted); font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }
+  th, td { text-align:right; padding:6px 8px; border-bottom:1px solid var(--line); } th:first-child, td:first-child { text-align:left; }
+  .scroll { overflow-x:auto; }
+  .warn { background:var(--warnbg); color:var(--warn); border-radius:8px; padding:10px 14px; margin-top:12px; }
+  svg { width:100%; height:180px; }
+  footer { color:var(--muted); font-size:12px; margin-top:24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Retirement Corpus Planner</h1>
+  <p class="sub">Enter your details to split your retirement money into safe, income and growth buckets for the next 10-15 years.</p>
+
+  <div class="card">
+    <form id="f">
+      <label>Your age <input name="age" type="number" min="30" max="90" value="60" required></label>
+      <label>Corpus (₹) <input name="corpus" type="number" min="100000" step="10000" value="10000000" required></label>
+      <label>Monthly expenses from corpus (₹) <input name="monthlyExpense" type="number" min="0" step="1000" value="50000"></label>
+      <label>Is spouse working?
+        <select name="spouseWorking"><option value="no">No</option><option value="yes">Yes</option></select></label>
+      <label>Risk profile
+        <select name="risk"><option value="low">Low (recommended)</option><option value="medium">Medium</option></select></label>
+      <label>Plan for
+        <select name="years"><option>10</option><option>12</option><option selected>15</option></select> </label>
+    </form>
+  </div>
+
+  <div id="out"></div>
+  <footer>Educational tool, not financial advice. Rates and scheme limits are assumptions (see plan.js); check current rates and consult a SEBI-registered adviser before investing.</footer>
+</main>
+<script src="plan.js"></script>
+<script>
+const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
+const lakh = n => n >= 1e7 ? '₹' + (n / 1e7).toFixed(2) + ' Cr' : '₹' + (n / 1e5).toFixed(1) + ' L';
+const colors = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)'];
+const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const form = document.getElementById('f'), out = document.getElementById('out');
+
+function render() {
+  const d = Object.fromEntries(new FormData(form));
+  let p;
+  try {
+    p = buildPlan({ age: +d.age, corpus: +d.corpus, monthlyExpense: +d.monthlyExpense, spouseWorking: d.spouseWorking === 'yes', risk: d.risk, years: +d.years });
+  } catch (e) { out.innerHTML = `<div class="warn">${esc(e.message)}</div>`; return; }
+  const last = p.projection[p.projection.length - 1];
+  const max = Math.max(...p.projection.map(r => r.start), 1);
+  const pts = p.projection.map((r, i) => `${(i / (p.projection.length - 1)) * 100},${100 - (r.end / max) * 95}`).join(' ');
+
+  out.innerHTML = `
+  <div class="stats">
+    <div class="card stat"><span>Equity share</span><b>${Math.round(p.equityPct * 100)}%</b></div>
+    <div class="card stat"><span>Expected blended return</span><b>${(p.blendedReturn * 100).toFixed(1)}%</b></div>
+    <div class="card stat"><span>Corpus left after ${p.inputs.years} yrs</span><b>${lakh(last.end)}</b></div>
+    <div class="card stat"><span>Monthly expense used</span><b>${inr(p.inputs.monthlyExpense)}</b></div>
+  </div>
+  ${p.warnings.map(w => `<div class="warn">${esc(w)}</div>`).join('')}
+  <div class="grid" style="margin-top:16px">
+    <div class="card">
+      <h2>Where to put the money</h2>
+      <div class="bar" role="img" aria-label="Allocation bar">${p.buckets.map((b, i) => `<div title="${esc(b.name)}" style="width:${b.amount / p.inputs.corpus * 100}%;background:${colors[i]}"></div>`).join('')}</div>
+      ${p.buckets.map((b, i) => `<div class="bucket">
+        <header><span><i class="dot" style="background:${colors[i]}"></i>${esc(b.name)}</span><span>${lakh(b.amount)} · ${(b.amount / p.inputs.corpus * 100).toFixed(0)}%</span></header>
+        <ul>${b.items.map(([n, a]) => `<li>${esc(n)}: ${inr(a)}</li>`).join('')}</ul>
+        <div class="note">${esc(b.note)} Expected ~${(b.rate * 100).toFixed(1)}%/yr.</div></div>`).join('')}
+    </div>
+    <div class="card">
+      <h2>Health insurance</h2>
+      <p>Base family floater: <b>${lakh(p.insurance.baseCover)}</b><br>Super top-up: <b>${lakh(p.insurance.superTopUp)}</b><br>Estimated premium: <b>${inr(p.insurance.premium)}/yr</b> (rises ~10%/yr)</p>
+      <ul>${p.insurance.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
+      <h2 style="margin-top:20px">Yearly routine</h2>
+      <ul>
+        <li>Each April, move 1 year of expenses from Bucket 2 into Bucket 1.</li>
+        <li>If equity is up more than 10% over target, book profit into Bucket 2.</li>
+        <li>If equity is down, pause the transfer and draw only from Buckets 1-2.</li>
+        <li>Top up the emergency fund after any use.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2>Investable corpus over ${p.inputs.years} years</h2>
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Corpus balance by year"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>
+    <div class="scroll"><table>
+      <tr><th>Year</th><th>Age</th><th>Start</th><th>Expenses</th><th>Health premium</th><th>End</th><th>Draw from</th></tr>
+      ${p.projection.map(r => `<tr><td>${r.year}</td><td>${r.age}</td><td>${lakh(r.start)}</td><td>${inr(r.expense)}</td><td>${inr(r.premium)}</td><td>${lakh(r.end)}</td><td>${r.source}</td></tr>`).join('')}
+    </table></div>
+  </div>`;
+}
+form.addEventListener('input', render);
+render();
+</script>
+</body>
+</html>
