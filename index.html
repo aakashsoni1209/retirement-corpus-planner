@@ -18,6 +18,7 @@
   form { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); align-items:end; }
   label { display:grid; gap:4px; font-size:13px; color:var(--muted); }
   .words { color:var(--accent); font-size:12px; min-height:18px; }
+  [hidden] { display:none !important; }
   input, select { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--text); }
   .stats { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); margin:16px 0; }
   .stat b { display:block; font-size:22px; } .stat span { color:var(--muted); font-size:13px; }
@@ -43,7 +44,9 @@
     <form id="f">
       <label>Your age <input name="age" type="number" min="30" max="90" value="60" required></label>
       <label>Corpus (₹) <input name="corpus" class="inr" inputmode="numeric" value="1,00,00,000" required></label>
-      <label>How much monthly retirement amount do you get? (₹) <input name="monthlyPension" class="inr" inputmode="numeric" value="0" placeholder="EPS, govt pension, annuity, rent"></label>
+      <label>Do you get a monthly pension / retirement income?
+        <select name="gotPension"><option value="no">No</option><option value="yes">Yes</option></select></label>
+      <label id="pensionBox" hidden>Monthly pension amount (₹) <input name="monthlyPension" class="inr" inputmode="numeric" placeholder="EPS, govt pension, annuity, rent"></label>
       <label>Monthly household expenses (₹) <input name="monthlyExpense" class="inr" inputmode="numeric" placeholder="Leave blank to use safe amount"></label>
       <label>Invest in share market?
         <select name="wantsEquity"><option value="yes">Yes</option><option value="no">No</option></select></label>
@@ -81,6 +84,8 @@ function render() {
   const d = Object.fromEntries(new FormData(form));
   const num = s => +String(s).replace(/\D/g, '');
   form.risk.disabled = d.wantsEquity === 'no';
+  document.getElementById('pensionBox').hidden = d.gotPension !== 'yes';
+  if (d.gotPension !== 'yes') d.monthlyPension = 0;
   form.querySelectorAll('.inr').forEach(el => el.nextElementSibling.textContent = inWords(num(el.value)));
   let p, safe;
   try {

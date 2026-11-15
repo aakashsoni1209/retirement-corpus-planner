@@ -2,7 +2,7 @@
 
 A one-page dashboard (amounts in the Indian system: ₹1,00,00,000, lakh, crore) that splits an Indian retirement corpus (₹) into buckets for the next 10-15 years.
 
-**Inputs:** age, corpus, monthly pension / retirement income, monthly expenses (optional: blank uses the safe amount), invest in share market (yes/no), spouse working (yes/no), risk profile (low/medium), horizon (10/12/15 years).
+**Inputs:** age, corpus, pension (yes/no, amount if yes), monthly expenses (optional: blank uses the safe amount), invest in share market (yes/no), spouse working (yes/no), risk profile (low/medium), horizon (10/12/15 years).
 
 **Output:**
 - Emergency fund (6 months if spouse works, else 12) and medical buffer
